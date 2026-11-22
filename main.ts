@@ -19,6 +19,8 @@ const O = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 /** Per-room A* expansion budget (work, not time); the greedy fallback gets the same again. */
 const ASTAR_BUDGET = 1_000_000;
 const GREEDY_BUDGET = 1_000_000;
+/** A last-resort deep A* retry for a room both searches gave up on, before the room is conceded. */
+const DEEP_BUDGET = 4_000_000;
 
 /** The four directions: [dx, dy, walk letter, push letter]. */
 const DIRS: [number, number, string, string][] = [
@@ -349,9 +351,14 @@ function searchRoom(sub: SubProblem, budget: number, optimal: boolean): string |
   return moves;
 }
 
-/** Solve one room optimally, falling back to a greedy search that still solves it within budget. */
+/**
+ * Solve one room: push-optimal A* first; if its budget runs out, a greedy search that still
+ * solves the room; if that too runs out, one deep A* retry before the room is conceded.
+ */
 function solveRoom(sub: SubProblem): string | null {
-  return searchRoom(sub, ASTAR_BUDGET, true) ?? searchRoom(sub, GREEDY_BUDGET, false);
+  return searchRoom(sub, ASTAR_BUDGET, true)
+    ?? searchRoom(sub, GREEDY_BUDGET, false)
+    ?? searchRoom(sub, DEEP_BUDGET, true);
 }
 
 /** The squares a box alone can be pushed onto some goal from (pulled back from the goals over open floor). */
